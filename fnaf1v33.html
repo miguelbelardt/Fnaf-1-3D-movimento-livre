@@ -89,6 +89,9 @@
   body.touch #stam{bottom:min(14px,3vh);width:min(160px,28vw)}
   #fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .5s;z-index:45;display:flex;align-items:center;justify-content:center;font-size:26px;color:#ddd;text-align:center}
   #screen.menu{background:radial-gradient(ellipse at 50% 25%,#2e1650 0,#0a0612 72%);cursor:default}
+  #screen.menu{align-items:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  #screen.menu .card{margin:auto;padding:14px 24px}
+  @media (max-height:560px){#screen.menu h1{font-size:28px;margin:0 0 4px}#screen.menu .sub{margin:2px 0 8px;font-size:13px}#screen.menu .mb{padding:6px 14px;font-size:15px;margin:4px 0}}
   #screen.menu h1{font-size:50px;letter-spacing:3px;color:#ffd84a;text-shadow:0 0 18px #7a3ad0;animation:flick 3s steps(1) infinite}
   @keyframes flick{0%,92%,96%{opacity:1}94%,98%{opacity:.55}}
   #screen .sub{opacity:.75;margin-bottom:18px}
