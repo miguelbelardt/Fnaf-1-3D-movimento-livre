@@ -86,7 +86,15 @@
   #stam b{display:block;height:100%;width:100%;background:#4fd0ff}
   #stam.tired b{background:#e03030}
   #stam::after{content:"FÔLEGO";position:absolute;left:0;right:0;top:-16px;text-align:center;font-size:11px;opacity:.8}
-  body.touch #stam{bottom:min(14px,3vh);width:min(160px,28vw)}
+  body.touch #stam{left:50%;right:auto;transform:translateX(-50%);bottom:min(14px,3vh);width:min(160px,28vw)}
+  @media (max-width:1100px){#stam{left:auto;right:20px;transform:none}}
+  .av{width:26px;height:26px;border-radius:50%;object-fit:cover;border:2px solid #fff;flex:0 0 auto;vertical-align:middle;background:#0a0612}
+  #mpHud .av{width:18px;height:18px;border-width:1px}
+  .avgrid{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+  .av.big{width:56px;height:56px;border-radius:8px;cursor:pointer}
+  .av.sel{border-color:#ffd84a;box-shadow:0 0 0 2px #ffd84a}
+  .av.none{display:inline-flex;align-items:center;justify-content:center;font:bold 22px "Courier New",monospace;color:#fff}
+  #screen .mrow{display:flex;align-items:center;justify-content:center;gap:6px;font-size:16px;margin:3px 0}
   #fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .5s;z-index:45;display:flex;align-items:center;justify-content:center;font-size:26px;color:#ddd;text-align:center}
   #screen.menu{background:radial-gradient(ellipse at 50% 25%,#2e1650 0,#0a0612 72%);cursor:default}
   #screen.menu{align-items:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch}
@@ -1915,12 +1923,23 @@ function openHelp() {
 }
 function closeHelp() { $('helpWin').style.display = 'none'; }
 $('helpX').addEventListener('click', closeHelp);
-$('mpX').addEventListener('click', () => { $('mpWin').style.display = 'none'; });
+$('mpX').addEventListener('click', () => { $('mpWin').style.display = 'none'; MP.ui.prof = false; });
+$('mpBody').addEventListener('change', e => {
+  if (e.target && e.target.id === 'mpMax2' && MP.role === 'host') { MP.max = Math.max(2, Math.min(5, +e.target.value | 0)); mpRoster(); if (G.state === 'menu') showMenu(); }
+  else if (e.target && e.target.id === 'profFile') {
+    if ($('profName')) { PROF.name = $('profName').value.replace(/[<>&"]/g, '').trim().slice(0, 14); profSave(); }
+    profLoadFile(e.target.files && e.target.files[0]);
+  }
+});
 $('mpBody').addEventListener('click', e => {
+  const av = e.target.closest ? e.target.closest('[data-av]') : null;
+  if (av) { if ($('profName')) PROF.name = $('profName').value.replace(/[<>&"]/g, '').trim().slice(0, 14); PROF.av = av.dataset.av ? animAv(av.dataset.av) : ''; profSave(); mpRender(); return; }
   const b = e.target.closest ? e.target.closest('[data-mp]') : null;
   if (!b) return;
   const a = b.dataset.mp;
-  const nm = () => { const v = $('mpName').value; try { localStorage.setItem('fnaf3d-name', v); } catch (er) {} return v; };
+  if (a === 'prof') { MP.ui.prof = true; mpRender(); return; }
+  if (a === 'profsave') { PROF.name = $('profName').value.replace(/[<>&"]/g, '').trim().slice(0, 14); profSave(); MP.ui.prof = false; MP.status = ''; mpRender(); if (G.state === 'menu') showMenu(); return; }
+  const nm = () => PROF.name;
   if (a === 'create') mpCreate(+$('mpMax').value, nm());
   else if (a === 'join') { MP.ui.code = $('mpCode').value; mpJoin($('mpCode').value, nm()); }
   else if (a === 'start') mpHostStart();
@@ -2006,18 +2025,19 @@ function showMenu() {
   closeMonitorSilent();
   if (MP.role === 'guest') {
     showScreen('FNaF 1 3D', '<p class="sub">Sala ' + esc(MP.code) + ' · aguardando o host iniciar a noite…</p>' +
-      MP.roster.map(r => '<p>● ' + esc(r.name) + (r.id === 'host' ? ' (host)' : '') + '</p>').join('') +
+      MP.roster.map(r => '<p class="mrow">' + avImg(r.av, r.color) + esc(r.name) + (r.id === 'host' ? ' (host)' : '') + '</p>').join('') +
       mbtn('cfg', '⚙ CONFIGURAÇÕES') + mbtn('help', 'COMO JOGAR') + mbtn('mpleave', 'SAIR DA SALA'), '', 'menu');
     return;
   }
   const cont = G.night > 1;
   showScreen('FNaF 1 3D',
     '<p class="sub">projeto de fã · sobreviva das 12 AM às 6 AM</p>' +
-    (MP.role === 'host' ? '<p class="sub">Sala ' + esc(MP.code) + ' · ' + MP.roster.map(r => esc(r.name)).join(', ') + '</p>' : '') +
+    (MP.role === 'host' ? '<p class="sub">Sala ' + esc(MP.code) + '</p>' + MP.roster.map(r => '<div class="mrow">' + avImg(r.av, r.color) + esc(r.name) + '</div>').join('') : '') +
     mbtn('play', '▶ ' + (cont ? 'CONTINUAR — NOITE ' + G.night : 'COMEÇAR — NOITE 1'), 'main') +
     (cont ? mbtn('new', 'NOVO JOGO') : '') +
     (G.best > 1 ? nightRow() : '') +
     mbtn('mp', MP.role === 'host' ? '👥 SALA ' + MP.code + ' (' + MP.roster.length + '/' + MP.max + ')' : '👥 MULTIPLAYER') +
+    mbtn('prof', '👤 PERFIL') +
     mbtn('cfg', '⚙ CONFIGURAÇÕES') +
     mbtn('help', 'COMO JOGAR') +
     '', '', 'menu');
@@ -2138,6 +2158,7 @@ screenEl.addEventListener('click', e => {
   else if (act === 'night') { if (b.classList && b.classList.contains('dis')) return; G.night = +b.dataset.n || 1; if (!MP.role) saveGame(); showMenu(); }
   else if (act === 'play') beginNight();
   else if (act === 'mp') mpOpenWin();
+  else if (act === 'prof') { mpOpenWin(); MP.ui.prof = true; mpRender(); }
   else if (act === 'mpleave') { mpLeave(); showMenu(); }
 });
 
@@ -2707,12 +2728,54 @@ function loadPeer() {
 }
 const mpGenCode = () => { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; let s = ''; for (let i = 0; i < 4; i++) s += A[Math.floor(Math.random() * A.length)]; return s; };
 const mpCleanName = n => String(n || '').replace(/[<>&"]/g, '').trim().slice(0, 14) || 'Jogador';
+/* ---------- perfil (nome + imagem) ---------- */
+const AVRE = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+\/=]+$/;
+const avOk = s => typeof s === 'string' && s.length < 14000 && AVRE.test(s);
+const PROF = { name: '', av: '' };
+try {
+  const o = JSON.parse(localStorage.getItem('fnaf3d-prof') || '{}');
+  PROF.name = String(o.name || localStorage.getItem('fnaf3d-name') || '').replace(/[<>&"]/g, '').trim().slice(0, 14);
+  PROF.av = avOk(o.av) ? o.av : '';
+} catch (e) {}
+function profSave() { try { localStorage.setItem('fnaf3d-prof', JSON.stringify(PROF)); localStorage.setItem('fnaf3d-name', PROF.name); } catch (e) {} }
+const animAvCache = {};
+function animAv(id) {
+  if (animAvCache[id]) return animAvCache[id];
+  try {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d'); g.fillStyle = '#0a0612'; g.fillRect(0, 0, 64, 64);
+    g.save(); g.scale(64 / 96, 64 / 96); PORTRAIT[id](g); g.restore();
+    const d = c.toDataURL('image/png');
+    return avOk(d) ? (animAvCache[id] = d) : '';
+  } catch (e) { return ''; }
+}
+function avImg(src, color) { return avOk(src) ? '<img class="av" src="' + src + '" alt="">' : '<i style="background:' + MPCOL[(color | 0) % 10] + '"></i>'; }
+function profLoadFile(file) {
+  if (!file) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    const im = new Image();
+    im.onload = () => {
+      try {
+        const c = document.createElement('canvas'); c.width = c.height = 64;
+        const g = c.getContext('2d'), sz = Math.min(im.width, im.height);
+        g.drawImage(im, (im.width - sz) / 2, (im.height - sz) / 2, sz, sz, 0, 0, 64, 64);
+        const d = c.toDataURL('image/jpeg', 0.72);
+        if (avOk(d)) { PROF.av = d; profSave(); MP.status = ''; } else MP.status = 'Não consegui usar essa imagem.';
+      } catch (e) { MP.status = 'Não consegui usar essa imagem.'; }
+      mpRender();
+    };
+    im.onerror = () => { MP.status = 'Imagem inválida.'; mpRender(); };
+    im.src = fr.result;
+  };
+  fr.readAsDataURL(file);
+}
 function mpLink() { try { return location.origin + location.pathname + '?sala=' + MP.code; } catch (e) { return '?sala=' + MP.code; } }
 
 /* ---------- criar / entrar / sair ---------- */
 async function mpCreate(max, name) {
   mpLeave(true);
-  MP.name = mpCleanName(name); MP.max = Math.max(2, Math.min(5, max | 0 || 4));
+  MP.name = mpCleanName(name); MP.av = PROF.av; MP.max = Math.max(2, Math.min(5, max | 0 || 4));
   MP.status = 'Criando a sala…'; mpRender();
   try { await loadPeer(); } catch (e) { MP.status = 'Não consegui carregar o multiplayer. Verifique a internet.'; mpRender(); return; }
   const attempt = n => {
@@ -2750,7 +2813,7 @@ async function mpJoin(code, name) {
     const conn = peer.connect('fnaf3dlivre-' + code, { reliable: true });
     mpHostConn = conn;
     const to = setTimeout(() => { if (!connected) fail('Sala não encontrada ou sem resposta.'); }, 15000);
-    conn.on('open', () => { connected = true; clearTimeout(to); MP.code = code; mpLastRecv = mpNow(); conn.send({ t: 'hello', name: MP.name }); });
+    conn.on('open', () => { connected = true; clearTimeout(to); MP.code = code; mpLastRecv = mpNow(); conn.send({ t: 'hello', name: MP.name, av: PROF.av }); });
     conn.on('data', m => { mpLastRecv = mpNow(); mpGuestMsg(m); });
     conn.on('close', () => { if (connected) mpHostGone('O host saiu da sala.'); else fail('Não foi possível entrar na sala.'); });
     conn.on('error', () => { if (!connected) fail('Erro de conexão com a sala.'); });
@@ -2783,8 +2846,8 @@ function mpHostGone(msg) {
 
 /* ---------- host: mensagens dos convidados ---------- */
 function mpRoster() {
-  const list = [{ id: 'host', name: MP.name, color: 0 }];
-  for (const id in MP.players) list.push({ id, name: MP.players[id].name, color: MP.players[id].color });
+  const list = [{ id: 'host', name: MP.name, color: 0, av: MP.av || '' }];
+  for (const id in MP.players) list.push({ id, name: MP.players[id].name, color: MP.players[id].color, av: MP.players[id].av || '' });
   MP.roster = list;
   if (MP.role === 'host') mpBroadcast({ t: 'roster', list, max: MP.max, code: MP.code, started: MP.started });
   mpRender();
@@ -2808,7 +2871,7 @@ function mpHostMsg(conn, m) {
     const used = {}; Object.values(MP.players).forEach(q => { used[q.color] = 1; });
     let color = 1; while (used[color] && color < 9) color++;
     mpConns[id] = conn;
-    MP.players[id] = { id, name: mpUniqueName(m.name), color, x: 0, z: 0, yaw: 0, pitch: 0, eye: 1.6, flash: 0, monitor: 0, cam: '1A', sprint: 0, loc: 'out', alive: true, use: null, t: mpNow() };
+    MP.players[id] = { id, av: avOk(m.av) ? m.av : '', name: mpUniqueName(m.name), color, x: 0, z: 0, yaw: 0, pitch: 0, eye: 1.6, flash: 0, monitor: 0, cam: '1A', sprint: 0, loc: 'out', alive: true, use: null, t: mpNow() };
     conn.send({ t: 'welcome', id, code: MP.code, max: MP.max });
     mpRoster();
     return;
@@ -3029,24 +3092,36 @@ function mpHud() {
   if (!h) { h = document.createElement('div'); h.id = 'mpHud'; document.body.appendChild(h); }
   if (!MP.role || !MP.started || (G.state !== 'playing' && G.state !== 'scare')) { h.style.display = 'none'; return; }
   const aliveOf = id => id === MP.myId ? !G.dead : id === 'host' && MP.role === 'host' ? !G.dead : (mpOthers()[id] ? mpOthers()[id].alive !== false : false);
-  h.innerHTML = MP.roster.map(r => '<span><i style="background:' + MPCOL[r.color % 10] + '"></i>' + esc(r.name) + (aliveOf(r.id) ? '' : ' ☠') + '</span>').join('');
+  h.innerHTML = MP.roster.map(r => '<span>' + avImg(r.av, r.color) + esc(r.name) + (aliveOf(r.id) ? '' : ' ☠') + '</span>').join('');
   h.style.display = 'flex';
 }
 
 /* ---------- janela do multiplayer ---------- */
-function mpOpenWin() { $('mpWin').style.display = 'flex'; mpRender(); }
+function mpOpenWin() { MP.ui.prof = false; $('mpWin').style.display = 'flex'; mpRender(); }
 function mpCloseWin() { $('mpWin').style.display = 'none'; }
 function mpRender() {
   const w = $('mpWin');
   if (!w || w.style.display !== 'flex') return;
-  const saved = (() => { try { return localStorage.getItem('fnaf3d-name') || ''; } catch (e) { return ''; } })();
-  const prevName = $('mpName') ? $('mpName').value : (MP.name !== 'Jogador' ? MP.name : saved);
+  if (MP.ui.prof) {
+    const nameNow = $('profName') ? $('profName').value : PROF.name;
+    let ph = '<h2>PERFIL</h2><p>Seu nome: <input id="profName" maxlength="14" value="' + esc(nameNow) + '" placeholder="Jogador"></p>' +
+      '<h3>Sua imagem</h3><div class="avgrid">' +
+      [['baron', 'Barão'], ['zig', 'Zig'], ['pipoca', 'Pipoca'], ['rex', 'Rex']].map(a => { const d = animAv(a[0]); return d ? '<img class="av big' + (PROF.av === d ? ' sel' : '') + '" data-av="' + a[0] + '" src="' + d + '" title="' + a[1] + '" alt="' + a[1] + '">' : ''; }).join('') +
+      '<span class="av big none' + (PROF.av ? '' : ' sel') + '" data-av="">✕</span></div>' +
+      '<p>Toque num animatrônico, ou escolha uma foto do seu aparelho:</p>' +
+      '<label class="mb" style="text-align:center">📷 ESCOLHER IMAGEM<input type="file" accept="image/*" id="profFile" style="display:none"></label>' +
+      '<p>Sua imagem aparece para os outros jogadores da sala.' + (MP.role ? ' Mudanças valem a partir da próxima sala.' : '') + '</p>' +
+      '<button class="mb main" data-mp="profsave">SALVAR</button>';
+    if (MP.status) ph += '<p class="st">' + esc(MP.status) + '</p>';
+    $('mpBody').innerHTML = ph;
+    return;
+  }
   const prevCode = $('mpCode') ? $('mpCode').value : (MP.ui.code || '');
-  const roster = (MP.roster || []).map(r => '<div class="pl"><i style="background:' + MPCOL[r.color % 10] + '"></i>' + esc(r.name) + (r.id === 'host' ? ' <small>(host)</small>' : '') + (r.id === MP.myId ? ' <small>(você)</small>' : '') + '</div>').join('');
+  const roster = (MP.roster || []).map(r => '<div class="pl">' + avImg(r.av, r.color) + esc(r.name) + (r.id === 'host' ? ' <small>(host)</small>' : '') + (r.id === MP.myId ? ' <small>(você)</small>' : '') + '</div>').join('');
   let h = '<h2>MULTIPLAYER</h2>';
   if (!MP.role) {
     h += '<p>Jogue em grupo (até 5 pessoas) na mesma pizzaria. Uma pessoa cria a sala e passa o <b>código</b> ou o <b>link</b> para os outros.</p>' +
-      '<p>Seu nome: <input id="mpName" maxlength="14" value="' + esc(prevName) + '" placeholder="Jogador"></p>' +
+      '<div class="pl">' + avImg(PROF.av, 0) + '<b>' + esc(PROF.name || 'Jogador') + '</b> <button class="mb" data-mp="prof" style="width:auto;display:inline-block;margin:0 0 0 8px;padding:4px 10px;font-size:14px">EDITAR PERFIL</button></div>' +
       '<h3>Criar uma sala (você é o host)</h3>' +
       '<p>Máximo de jogadores: <select id="mpMax">' + [2, 3, 4, 5].map(n => '<option value="' + n + '"' + (n === MP.max ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></p>' +
       '<button class="mb main" data-mp="create">CRIAR SALA</button>' +
@@ -3059,6 +3134,7 @@ function mpRender() {
       '<p class="lnk">' + esc(mpLink()) + '</p>' +
       '<button class="mb" data-mp="copy">COPIAR LINK</button>' + (typeof navigator !== 'undefined' && navigator.share ? '<button class="mb" data-mp="share">COMPARTILHAR…</button>' : '') +
       '<h3>Jogadores (' + MP.roster.length + '/' + MP.max + ')</h3>' + roster +
+      '<p>Máximo de jogadores: <select id="mpMax2">' + [2, 3, 4, 5].filter(n => n >= Math.max(2, MP.roster.length)).map(n => '<option value="' + n + '"' + (n === MP.max ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></p>' +
       (MP.roster.length >= 2 ? '<p><i>Tudo pronto! Feche esta janela (✕) e toque em COMEÇAR no menu para iniciar a noite para todos.</i></p>' : '<p><i>Aguardando alguém entrar…</i></p>') +
       '<button class="mb" data-mp="leave">FECHAR SALA</button>';
   } else {
@@ -3076,7 +3152,7 @@ function mpHostStart() {
 }
 
 /* ===== BOOT ===== */
-window.FNAF = { beginNight, showMenu, toggleDoor, takeBattery, batteries, canInteract, MP, mpCreate, mpJoin, mpHostStart, mpLeave, mpSnap, setInputMode, getTouch: () => TOUCH, CFG, openSettings, closeSettings, OX, OUT, NAV, ROBOT, transition, enterPizzeria, exitPizzeria, dawnNow, goHome, pick, CONFIG, G, P, ROOMS, CAMS, GRAPH, ANCHORS, COL, doors, scene, camera, Animatronics, lose, win };
+window.FNAF = { PROF, mpRoster, beginNight, showMenu, toggleDoor, takeBattery, batteries, canInteract, MP, mpCreate, mpJoin, mpHostStart, mpLeave, mpSnap, setInputMode, getTouch: () => TOUCH, CFG, openSettings, closeSettings, OX, OUT, NAV, ROBOT, transition, enterPizzeria, exitPizzeria, dawnNow, goHome, pick, CONFIG, G, P, ROOMS, CAMS, GRAPH, ANCHORS, COL, doors, scene, camera, Animatronics, lose, win };
 if (TOUCH) root.classList.add('touch');
 loadGame();
 applyCfg();
