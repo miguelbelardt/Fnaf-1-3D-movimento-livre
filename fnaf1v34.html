@@ -2013,6 +2013,7 @@ function showMenu() {
   const cont = G.night > 1;
   showScreen('FNaF 1 3D',
     '<p class="sub">projeto de fã · sobreviva das 12 AM às 6 AM</p>' +
+    (MP.role === 'host' ? '<p class="sub">Sala ' + esc(MP.code) + ' · ' + MP.roster.map(r => esc(r.name)).join(', ') + '</p>' : '') +
     mbtn('play', '▶ ' + (cont ? 'CONTINUAR — NOITE ' + G.night : 'COMEÇAR — NOITE 1'), 'main') +
     (cont ? mbtn('new', 'NOVO JOGO') : '') +
     (G.best > 1 ? nightRow() : '') +
@@ -2047,7 +2048,7 @@ function startNight() {
   resetNight();
   G.state = 'intro';
   G.introT = 2.8;
-  if (MP.role === 'host') { MP.started = true; mpBroadcast({ t: 'start', night: G.night }); mpRoster(); }
+  if (MP.role === 'host') { MP.started = true; mpCloseWin(); mpBroadcast({ t: 'start', night: G.night }); mpRoster(); }
   showScreen('12:00 AM', '<p>Noite ' + G.night + '</p><p>Você estacionou o carro em frente à pizzaria…</p>', '', 'intro');
   hideHud();
   Snd.setHum(0);
@@ -2107,6 +2108,7 @@ function win() {
   hideHud();
   Snd.setHum(0); Snd.setBuzz(0);
   G.night = Math.min(99, done + 1); if (!MP.role) saveGame();
+  if (MP.role === 'host') mpEmit('nightend', {});
   showScreen('NOITE ' + done + ' CONCLUÍDA',
     '<p>Você dirigiu para casa e descansou…<br>Mas amanhã tem turno de novo.</p>' +
     (MP.role === 'guest' ? '<p><i>Aguardando o host iniciar a próxima noite…</i></p>' + mbtn('mpleave', 'SAIR DA SALA')
@@ -2133,7 +2135,7 @@ screenEl.addEventListener('click', e => {
   else if (act === 'help') openHelp();
   else if (act === 'menu') showMenu();
   else if (act === 'new') { G.night = 1; saveGame(); beginNight(); }
-  else if (act === 'night') { G.night = +b.dataset.n || 1; saveGame(); beginNight(); }
+  else if (act === 'night') { if (b.classList && b.classList.contains('dis')) return; G.night = +b.dataset.n || 1; if (!MP.role) saveGame(); showMenu(); }
   else if (act === 'play') beginNight();
   else if (act === 'mp') mpOpenWin();
   else if (act === 'mpleave') { mpLeave(); showMenu(); }
@@ -2181,8 +2183,8 @@ setEl.addEventListener('click', e => {
   if (a === 'close') closeSettings();
   else if (a === 'full') { try { const d = document.documentElement; (d.requestFullscreen || d.webkitRequestFullscreen).call(d); } catch (er) {} }
   else if (a === 'defaults') { Object.assign(CFG, CFG_DEF); syncCfgUI(); applyCfg(); saveCfg(); }
-  else if (a === 'restart') { G.cfg = false; setEl.style.display = 'none'; beginNight(); }
-  else if (a === 'menu') { G.cfg = false; setEl.style.display = 'none'; unlock(); if (MP.role) mpLeave(); showMenu(); }
+  else if (a === 'restart') { if (MP.role === 'guest') { toast('Só o host pode reiniciar a noite'); return; } G.cfg = false; setEl.style.display = 'none'; beginNight(); }
+  else if (a === 'menu') { G.cfg = false; setEl.style.display = 'none'; unlock(); if (MP.role) { if (typeof confirm === 'function' && !confirm('Sair da sala multiplayer?')) { setEl.style.display = 'flex'; G.cfg = true; return; } mpLeave(); } showMenu(); }
 });
 $('gear').addEventListener('click', () => { if (G.state === 'playing') { if (G.cfg) closeSettings(); else openSettings(); } });
 // Esc com o mouse travado: o navegador solta o mouse sozinho → abre o painel
@@ -2787,18 +2789,26 @@ function mpRoster() {
   if (MP.role === 'host') mpBroadcast({ t: 'roster', list, max: MP.max, code: MP.code, started: MP.started });
   mpRender();
 }
+function mpUniqueName(raw) {   // ninguém fica com nome repetido na mesma sala
+  const base = mpCleanName(raw);
+  const used = {}; used[String(MP.name).toLowerCase()] = 1;
+  for (const id in MP.players) used[String(MP.players[id].name).toLowerCase()] = 1;
+  let n = base, i = 2;
+  while (used[n.toLowerCase()]) { const suf = ' ' + i++; n = base.slice(0, 14 - suf.length) + suf; }
+  return n;
+}
 function mpHostMsg(conn, m) {
   const id = conn.peer;
   if (!m || typeof m !== 'object') return;
   if (m.t === 'hello') {
     if (MP.players[id]) return;
     const deny = why => { try { conn.send({ t: 'deny', why }); } catch (e) {} setTimeout(() => { try { conn.close(); } catch (e) {} }, 300); };
-    if (MP.started) return deny('A partida já começou.');
+    if (MP.started && (G.state === 'playing' || G.state === 'scare' || G.state === 'intro')) return deny('A partida já começou. Espere a noite acabar.');
     if (Object.keys(MP.players).length + 1 >= MP.max) return deny('Sala cheia (' + MP.max + ' jogadores).');
     const used = {}; Object.values(MP.players).forEach(q => { used[q.color] = 1; });
     let color = 1; while (used[color] && color < 9) color++;
     mpConns[id] = conn;
-    MP.players[id] = { id, name: mpCleanName(m.name), color, x: 0, z: 0, yaw: 0, pitch: 0, eye: 1.6, flash: 0, monitor: 0, cam: '1A', sprint: 0, loc: 'out', alive: true, use: null, t: mpNow() };
+    MP.players[id] = { id, name: mpUniqueName(m.name), color, x: 0, z: 0, yaw: 0, pitch: 0, eye: 1.6, flash: 0, monitor: 0, cam: '1A', sprint: 0, loc: 'out', alive: true, use: null, t: mpNow() };
     conn.send({ t: 'welcome', id, code: MP.code, max: MP.max });
     mpRoster();
     return;
@@ -2895,6 +2905,7 @@ function mpGuestEvt(m) {
   else if (m.k === 'bang') { Snd.bang(); G.shake = 0.7; toast(m.msg || ''); }
   else if (m.k === 'honk') Snd.honk();
   else if (m.k === 'toast') toast(m.msg || '');
+  else if (m.k === 'nightend') { if (G.state === 'playing' || G.state === 'scare' || G.state === 'intro') { G.scare = null; G.busy = false; toast('O host terminou a noite'); win(); } }
 }
 
 /* ---------- host: estado derivado + snapshot ---------- */
@@ -3048,7 +3059,7 @@ function mpRender() {
       '<p class="lnk">' + esc(mpLink()) + '</p>' +
       '<button class="mb" data-mp="copy">COPIAR LINK</button>' + (typeof navigator !== 'undefined' && navigator.share ? '<button class="mb" data-mp="share">COMPARTILHAR…</button>' : '') +
       '<h3>Jogadores (' + MP.roster.length + '/' + MP.max + ')</h3>' + roster +
-      (MP.roster.length >= 2 ? '<button class="mb main" data-mp="start">▶ INICIAR NOITE ' + G.night + '</button>' : '<p><i>Aguardando alguém entrar…</i></p>') +
+      (MP.roster.length >= 2 ? '<p><i>Tudo pronto! Feche esta janela (✕) e toque em COMEÇAR no menu para iniciar a noite para todos.</i></p>' : '<p><i>Aguardando alguém entrar…</i></p>') +
       '<button class="mb" data-mp="leave">FECHAR SALA</button>';
   } else {
     h += '<p>Você está na sala <b>' + esc(MP.code) + '</b>.</p><h3>Jogadores (' + MP.roster.length + '/' + MP.max + ')</h3>' + roster +
@@ -3065,7 +3076,7 @@ function mpHostStart() {
 }
 
 /* ===== BOOT ===== */
-window.FNAF = { toggleDoor, takeBattery, batteries, canInteract, MP, mpCreate, mpJoin, mpHostStart, mpLeave, mpSnap, setInputMode, getTouch: () => TOUCH, CFG, openSettings, closeSettings, OX, OUT, NAV, ROBOT, transition, enterPizzeria, exitPizzeria, dawnNow, goHome, pick, CONFIG, G, P, ROOMS, CAMS, GRAPH, ANCHORS, COL, doors, scene, camera, Animatronics, lose, win };
+window.FNAF = { beginNight, showMenu, toggleDoor, takeBattery, batteries, canInteract, MP, mpCreate, mpJoin, mpHostStart, mpLeave, mpSnap, setInputMode, getTouch: () => TOUCH, CFG, openSettings, closeSettings, OX, OUT, NAV, ROBOT, transition, enterPizzeria, exitPizzeria, dawnNow, goHome, pick, CONFIG, G, P, ROOMS, CAMS, GRAPH, ANCHORS, COL, doors, scene, camera, Animatronics, lose, win };
 if (TOUCH) root.classList.add('touch');
 loadGame();
 applyCfg();
