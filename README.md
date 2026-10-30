@@ -1,6 +1,6 @@
 # FNaF 1 3D — movimento livre
 
-Jogo de terror em 3D que roda direto no navegador, em **um único arquivo** (`fnaf1v36.html`). Você é o vigia noturno de uma pizzaria com animatrônicos que se mexem quando ninguém está olhando. Sobreviva até as 6 da manhã.
+Jogo de terror em 3D que roda direto no navegador, em **um único arquivo** (`fnaf-1-3D.html`). Você é o vigia noturno de uma pizzaria com animatrônicos que se mexem quando ninguém está olhando. Sobreviva até as 6 da manhã.
 
 Funciona no **celular (toque)** e no **PC (teclado e mouse)**, e tem **multiplayer cooperativo de até 5 jogadores**.
 
@@ -8,7 +8,7 @@ Funciona no **celular (toque)** e no **PC (teclado e mouse)**, e tem **multiplay
 
 ## Como jogar
 
-Abra o `fnaf1v36.html` no navegador (ou publique no GitHub Pages) e toque/clique em **COMEÇAR**.
+Abra o `fnaf-1-3D.html` no navegador (ou publique no GitHub Pages) e toque/clique em **COMEÇAR**.
 
 1. Entre na pizzaria pelas portas de vidro.
 2. Vá até o **gerador** e segure **E** para ligar a energia.
@@ -62,11 +62,15 @@ Todos jogam a mesma noite no mesmo mapa. O host controla relógio, energia, port
 - Em algumas redes (dados móveis, Wi-Fi corporativo) a conexão pode falhar. O jogo usa servidores de relay públicos como reserva, mas sem garantia.
 - O multiplayer ainda é novo: relate qualquer problema nas issues.
 
+## Versão
+
+O número da versão aparece no rodapé do menu do jogo.
+
 ## Publicar no GitHub Pages
 
-1. Envie o `fnaf1v36.html` para o repositório (se quiser abrir direto pelo endereço do site, mantenha também uma cópia chamada `index.html`).
+1. Envie o `fnaf-1-3D.html` para o repositório (se quiser abrir direto pelo endereço do site, mantenha também uma cópia chamada `index.html`).
 2. Em **Settings → Pages**, escolha a branch principal e a pasta raiz.
-3. Compartilhe o link gerado; o link de sala fica `https://miguelbelardt.github.io/Fnaf-1-3D-movimento-livre/fnaf1v36.html?sala=CODIGO`.
+3. Compartilhe o link gerado; o link de sala fica `https://miguelbelardt.github.io/Fnaf-1-3D-movimento-livre/fnaf-1-3D.html?sala=CODIGO`.
 
 ## Tecnologia
 

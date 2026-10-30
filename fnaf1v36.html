@@ -241,6 +241,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const Q = new URLSearchParams(location.search);
 // celular = tela de toque (use ?touch=1 ou ?touch=0 para forçar)
 const mq = s => !!(window.matchMedia && window.matchMedia(s).matches);
+const VERSION = 'v36';   // a cada atualização, só mude este número
 const FORCE_INPUT = Q.has('touch');
 let TOUCH = Q.has('touch') ? Q.get('touch') !== '0' :
   (mq('(pointer:coarse)') || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0 && !mq('(any-pointer:fine)')));
@@ -2040,7 +2041,7 @@ function showMenu() {
     mbtn('prof', '👤 PERFIL') +
     mbtn('cfg', '⚙ CONFIGURAÇÕES') +
     mbtn('help', 'COMO JOGAR') +
-    '', '', 'menu');
+    '<p class="sub" style="font-size:13px;margin:10px 0 0">versão ' + VERSION + '</p>', '', 'menu');
 }
 function beginNight() {
   lockFail = false;
